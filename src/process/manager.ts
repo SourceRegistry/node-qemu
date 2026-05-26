@@ -5,6 +5,13 @@ import { buildArgs } from "./args.js";
 import type { QemuConfig, QemuProcessOptions } from "./config.js";
 import { resolveQemuBinary } from "../util/resolve-binary.js";
 
+export type QemuProcessEventMap = {
+  stdout: [string];
+  stderr: [string];
+  exit: [code: number | null, signal: NodeJS.Signals | null]
+  error: [Error]
+}
+
 /**
  * Manages the lifecycle of a QEMU OS process.
  *
@@ -25,7 +32,7 @@ import { resolveQemuBinary } from "../util/resolve-binary.js";
  * await client.connect();
  * ```
  */
-export class QemuProcess extends EventEmitter {
+export class QemuProcess extends EventEmitter<QemuProcessEventMap> {
   readonly binary: string;
   readonly config: QemuConfig;
   private proc: ChildProcess | null = null;
