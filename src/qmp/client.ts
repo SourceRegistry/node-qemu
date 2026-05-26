@@ -98,11 +98,15 @@ export class QMPClient extends QMPCommands {
     sock.on("data", (chunk: string) => this.onData(chunk));
 
     sock.on("error", (err) => {
+      const code = (err as NodeJS.ErrnoException).code;
       if (this.handshakeReject) {
         const reject = this.handshakeReject;
         this.handshakeResolve = null;
         this.handshakeReject = null;
         reject(err);
+      } else if (code === "ECONNRESET" || code === "EPIPE") {
+        // Socket closed by the remote end — the close event fires next and
+        // handles all cleanup; no need to surface this as an error.
       } else {
         this.emit("error", err as Error);
       }

@@ -1,6 +1,6 @@
 /** Typed QEMU process configuration. */
 
-export type QemuAccel = "kvm" | "hvf" | "xen" | "hax" | "tcg";
+export type QemuAccel = "kvm" | "hvf" | "xen" | "hax" | "tcg" | "whpx";
 
 export interface QemuMachine {
   type: string;
@@ -77,6 +77,7 @@ export interface QemuNetNone {
 
 export type QemuNet = QemuNetTap | QemuNetUser | QemuNetBridge | QemuNetNone;
 
+/** Unix socket QMP endpoint. Not supported on Windows — use {@link QemuQmpTcp} instead. */
 export interface QemuQmpSocket {
   socketPath: string;
 }
