@@ -68,6 +68,7 @@ export function buildArgs(config: QemuConfig): string[] {
   if (config.vnc) {
     let v = config.vnc.display;
     if (config.vnc.password) v += ",password=on";
+    if (config.vnc.websocket != null) v += `,websocket=${config.vnc.websocket}`;
     args.push("-vnc", v);
   }
 

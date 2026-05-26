@@ -92,6 +92,12 @@ export type QemuQmp = QemuQmpSocket | QemuQmpTcp;
 export interface QemuVnc {
   display: string;
   password?: boolean;
+  /**
+   * Enable QEMU's built-in WebSocket VNC listener on this port.
+   * Allows browser clients (e.g. noVNC) to connect directly or via proxy.
+   * Example: `5700`
+   */
+  websocket?: number;
 }
 
 export interface QemuSpice {
