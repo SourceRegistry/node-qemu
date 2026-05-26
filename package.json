@@ -1,0 +1,50 @@
+{
+  "name": "node-qemu",
+  "version": "0.0.0",
+  "description": "QEMU management library for Node.js",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.es",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.es",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "docs:build": "typedoc"
+  },
+  "keywords": [
+    "nodejs",
+    "typescript",
+    "qemu",
+    "kvm",
+    "qmp",
+    "virtualization"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SourceRegistry/node-qemu.git"
+  },
+  "homepage": "https://sourceregistry.github.io/node-qemu/",
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@types/node": "^25.9.1",
+    "semantic-release": "^25.0.3",
+    "typedoc": "^0.28.19",
+    "typescript": "^5.8.3",
+    "vite": "^8.0.14",
+    "vite-plugin-dts": "^5.0.1",
+    "vitest": "^4.1.7"
+  }
+}
