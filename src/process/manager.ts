@@ -3,6 +3,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { writeFile, rm } from "node:fs/promises";
 import { buildArgs } from "./args.js";
 import type { QemuConfig, QemuProcessOptions } from "./config.js";
+import { resolveQemuBinary } from "../util/resolve-binary.js";
 
 /**
  * Manages the lifecycle of a QEMU OS process.
@@ -31,7 +32,7 @@ export class QemuProcess extends EventEmitter {
 
   constructor(opts: QemuProcessOptions) {
     super();
-    this.binary = opts.binary ?? "qemu-system-x86_64";
+    this.binary = opts.binary ?? resolveQemuBinary("qemu-system-x86_64");
     this.config = opts.config;
   }
 

@@ -12,3 +12,6 @@ export { buildArgs } from "./process/args.js";
 // Image
 export { QemuImg } from "./image/qemu-img.js";
 export type { ImageInfo, ImageFormat, Snapshot } from "./image/types.js";
+
+// Utilities
+export { resolveQemuBinary } from "./util/resolve-binary.js";

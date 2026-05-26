@@ -1,5 +1,8 @@
 import { execFile as _execFile } from "./exec.js";
 import type { ImageFormat, ImageInfo, Snapshot } from "./types.js";
+import { resolveQemuBinary } from "../util/resolve-binary.js";
+
+const QEMU_IMG = resolveQemuBinary("qemu-img");
 
 /** Allows tests to swap out the execFile implementation. */
 export const _deps = { execFile: _execFile };
@@ -62,7 +65,7 @@ export class QemuImg {
       if (opts.backingFormat) args.push("-F", opts.backingFormat);
     }
     args.push(opts.filename, opts.size);
-    await _deps.execFile("qemu-img", args);
+    await _deps.execFile(QEMU_IMG, args);
   }
 
   /**
@@ -83,7 +86,7 @@ export class QemuImg {
     if (opts.format) args.push("-f", opts.format);
     if (opts.preallocation) args.push("--preallocation", opts.preallocation);
     args.push(opts.filename, opts.size);
-    await _deps.execFile("qemu-img", args);
+    await _deps.execFile(QEMU_IMG, args);
   }
 
   /**
@@ -112,7 +115,7 @@ export class QemuImg {
     if (opts.compress) args.push("-c");
     if (opts.sparse) args.push("-S", "0");
     args.push(opts.src, opts.dst);
-    await _deps.execFile("qemu-img", args);
+    await _deps.execFile(QEMU_IMG, args);
   }
 
   /**
@@ -122,7 +125,7 @@ export class QemuImg {
    * @see {@link https://www.qemu.org/docs/master/tools/qemu-img.html#cmdoption-qemu-img-commands-arg-info}
    */
   static async info(opts: { filename: string }): Promise<ImageInfo> {
-    const { stdout } = await _deps.execFile("qemu-img", ["info", "--output=json", opts.filename]);
+    const { stdout } = await _deps.execFile(QEMU_IMG, ["info", "--output=json", opts.filename]);
     const raw = JSON.parse(stdout) as Record<string, unknown>;
     return {
       filename: raw["filename"] as string,
@@ -152,7 +155,7 @@ export class QemuImg {
     if (opts.format) args.push("-f", opts.format);
     if (opts.repair) args.push("-r", "all");
     args.push(opts.filename);
-    await _deps.execFile("qemu-img", args);
+    await _deps.execFile(QEMU_IMG, args);
   }
 
   /**
@@ -162,7 +165,7 @@ export class QemuImg {
    * @see {@link https://www.qemu.org/docs/master/tools/qemu-img.html#cmdoption-qemu-img-commands-arg-snapshot}
    */
   static async snapshotCreate(opts: { filename: string; tag: string }): Promise<void> {
-    await _deps.execFile("qemu-img", ["snapshot", "-c", opts.tag, opts.filename]);
+    await _deps.execFile(QEMU_IMG, ["snapshot", "-c", opts.tag, opts.filename]);
   }
 
   /**
@@ -171,7 +174,7 @@ export class QemuImg {
    * @see {@link https://www.qemu.org/docs/master/tools/qemu-img.html#cmdoption-qemu-img-commands-arg-snapshot}
    */
   static async snapshotApply(opts: { filename: string; tag: string }): Promise<void> {
-    await _deps.execFile("qemu-img", ["snapshot", "-a", opts.tag, opts.filename]);
+    await _deps.execFile(QEMU_IMG, ["snapshot", "-a", opts.tag, opts.filename]);
   }
 
   /**
@@ -180,7 +183,7 @@ export class QemuImg {
    * @see {@link https://www.qemu.org/docs/master/tools/qemu-img.html#cmdoption-qemu-img-commands-arg-snapshot}
    */
   static async snapshotDelete(opts: { filename: string; tag: string }): Promise<void> {
-    await _deps.execFile("qemu-img", ["snapshot", "-d", opts.tag, opts.filename]);
+    await _deps.execFile(QEMU_IMG, ["snapshot", "-d", opts.tag, opts.filename]);
   }
 
   /**
@@ -189,7 +192,7 @@ export class QemuImg {
    * @see {@link https://www.qemu.org/docs/master/tools/qemu-img.html#cmdoption-qemu-img-commands-arg-snapshot}
    */
   static async snapshotList(opts: { filename: string }): Promise<Snapshot[]> {
-    const { stdout } = await _deps.execFile("qemu-img", ["info", "--output=json", opts.filename]);
+    const { stdout } = await _deps.execFile(QEMU_IMG, ["info", "--output=json", opts.filename]);
     const raw = JSON.parse(stdout) as Record<string, unknown>;
     return ((raw["snapshots"] ?? []) as RawSnapshotEntry[]).map(parseSnapshot);
   }
