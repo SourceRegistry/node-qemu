@@ -118,6 +118,46 @@ describe("buildArgs", () => {
     expect(args[idx + 1]).toContain("discard=unmap");
   });
 
+  it("adds if=none for a virtio drive, so the -device attach doesn't fight QEMU's implicit if=ide attach", () => {
+    const args = buildArgs({
+      drives: [{ file: "/vm.qcow2", format: "qcow2", virtio: true }],
+    });
+    const idx = args.indexOf("-drive");
+    expect(args[idx + 1]).toContain("if=none");
+    expect(args).toContain("-device");
+    expect(args[args.indexOf("-device") + 1]).toBe("virtio-blk-pci,drive=drive0");
+  });
+
+  it("does not add if=none for a non-virtio drive", () => {
+    const args = buildArgs({
+      drives: [{ file: "/seed.img", format: "raw", media: "cdrom" }],
+    });
+    const idx = args.indexOf("-drive");
+    expect(args[idx + 1]).not.toContain("if=none");
+  });
+
+  it("gives each net entry a distinct default id instead of always 'net0'", () => {
+    const args = buildArgs({
+      net: [
+        { type: "tap", ifname: "tap0", script: "no", downscript: "no" },
+        { type: "tap", ifname: "tap1", script: "no", downscript: "no" },
+        { type: "tap", ifname: "tap2", script: "no", downscript: "no" },
+      ],
+    });
+    const netdevs = args.filter((a) => a.startsWith("tap,id="));
+    expect(netdevs).toEqual([
+      "tap,id=net0,ifname=tap0,script=no,downscript=no",
+      "tap,id=net1,ifname=tap1,script=no,downscript=no",
+      "tap,id=net2,ifname=tap2,script=no,downscript=no",
+    ]);
+    const devices = args.filter((_, i) => args[i - 1] === "-device");
+    expect(devices).toEqual([
+      "virtio-net-pci,netdev=net0",
+      "virtio-net-pci,netdev=net1",
+      "virtio-net-pci,netdev=net2",
+    ]);
+  });
+
   it("adds tap network", () => {
     const args = buildArgs({
       net: [{ type: "tap", id: "net0", ifname: "tap0", script: "no", downscript: "no" }],

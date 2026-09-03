@@ -5,6 +5,7 @@ vi.mock("node:child_process", () => ({ spawn: vi.fn() }));
 vi.mock("node:fs/promises", () => ({ writeFile: vi.fn().mockResolvedValue(undefined), rm: vi.fn().mockResolvedValue(undefined) }));
 
 import { spawn } from "node:child_process";
+import { writeFile, rm } from "node:fs/promises";
 import { QemuProcess } from "../../src/process/manager.js";
 
 class MockProcess extends EventEmitter {
@@ -86,6 +87,35 @@ describe("QemuProcess", () => {
     await proc.start();
     mock.emit("exit", 0, null);
     expect(spy).toHaveBeenCalledWith(0, null);
+  });
+
+  it("writes the pidfile itself when not daemonized", async () => {
+    const mock = new MockProcess();
+    vi.mocked(spawn).mockReturnValue(mock as unknown as ReturnType<typeof spawn>);
+    const proc = new QemuProcess({ config: { pidfile: "/run/vm.pid" } });
+    await proc.start();
+    expect(writeFile).toHaveBeenCalledWith("/run/vm.pid", "12345", "utf8");
+  });
+
+  it("deletes the pidfile on exit when not daemonized", async () => {
+    const mock = new MockProcess();
+    vi.mocked(spawn).mockReturnValue(mock as unknown as ReturnType<typeof spawn>);
+    const proc = new QemuProcess({ config: { pidfile: "/run/vm.pid" } });
+    await proc.start();
+    mock.emit("exit", 0, null);
+    expect(rm).toHaveBeenCalledWith("/run/vm.pid", { force: true });
+  });
+
+  it("does not touch the pidfile when daemonized, since QEMU itself owns it after forking", async () => {
+    const mock = new MockProcess();
+    vi.mocked(spawn).mockReturnValue(mock as unknown as ReturnType<typeof spawn>);
+    const proc = new QemuProcess({ config: { pidfile: "/run/vm.pid", daemonize: true } });
+    await proc.start();
+    expect(writeFile).not.toHaveBeenCalled();
+    // The wrapper process exiting (code 0) is normal daemonize behavior,
+    // not the real daemon dying -- must not delete the daemon's pidfile.
+    mock.emit("exit", 0, null);
+    expect(rm).not.toHaveBeenCalled();
   });
 
   it("implements Symbol.asyncDispose", () => {

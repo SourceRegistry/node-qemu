@@ -71,7 +71,13 @@ export class QemuProcess extends EventEmitter<QemuProcessEventMap> {
 
     this.proc = proc;
 
-    if (this.config.pidfile && proc.pid != null) {
+    // With daemonize:true, QEMU itself forks and writes config.pidfile
+    // (via the -pidfile arg in buildArgs) with the *real* detached
+    // daemon's pid once it's ready — this spawned wrapper process is
+    // just the launcher and its own pid is not the one that ends up
+    // running. Writing it here would race qemu's own write with the
+    // wrong pid, so skip it in that case.
+    if (this.config.pidfile && proc.pid != null && !this.config.daemonize) {
       await writeFile(this.config.pidfile, String(proc.pid), "utf8");
     }
 
@@ -84,7 +90,12 @@ export class QemuProcess extends EventEmitter<QemuProcessEventMap> {
 
     proc.on("exit", (code, signal) => {
       this.proc = null;
-      if (this.config.pidfile) {
+      // With daemonize:true, this "exit" is the launcher forking and
+      // returning — expected, successful, and unrelated to whether the
+      // real daemon (still running, detached) is alive. Deleting the
+      // pidfile here would delete the live daemon's own pidfile out
+      // from under it.
+      if (this.config.pidfile && !this.config.daemonize) {
         rm(this.config.pidfile, { force: true }).catch(() => {});
       }
       this.emit("exit", code, signal);

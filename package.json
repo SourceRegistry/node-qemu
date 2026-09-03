@@ -4,11 +4,11 @@
   "description": "QEMU management library for Node.js",
   "type": "module",
   "main": "./dist/index.cjs",
-  "module": "./dist/index.es",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.es",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts"
     }
