@@ -49,17 +49,18 @@ export function buildArgs(config: QemuConfig): string[] {
     args.push("-qmp", qmp);
   }
 
-  for (const drive of config.drives ?? []) {
+  (config.drives ?? []).forEach((drive, i) => {
+    const id = drive.id ?? (drive.virtio ? `drive${i}` : undefined);
     const parts: string[] = [`file=${drive.file}`, `format=${drive.format ?? "raw"}`];
-    if (drive.id) parts.push(`id=${drive.id}`);
+    if (id) parts.push(`id=${id}`);
     if (drive.media) parts.push(`media=${drive.media}`);
     if (drive.cache) parts.push(`cache=${drive.cache}`);
     if (drive.aio) parts.push(`aio=${drive.aio}`);
     if (drive.readonly) parts.push("readonly=on");
     if (drive.discard) parts.push(`discard=${drive.discard}`);
     args.push("-drive", parts.join(","));
-    if (drive.virtio) args.push("-device", `virtio-blk-pci,drive=${drive.id ?? drive.file}`);
-  }
+    if (drive.virtio) args.push("-device", `virtio-blk-pci,drive=${id}`);
+  });
 
   for (const net of config.net ?? []) {
     appendNet(args, net);
