@@ -51,7 +51,15 @@ export function buildArgs(config: QemuConfig): string[] {
 
   (config.drives ?? []).forEach((drive, i) => {
     const id = drive.id ?? (drive.virtio ? `drive${i}` : undefined);
-    const parts: string[] = [`file=${drive.file}`, `format=${drive.format ?? "raw"}`];
+    const parts: string[] = [];
+    // A virtio drive is attached to its virtio-blk-pci device by the
+    // separate -device clause below. Without if=none, QEMU's legacy
+    // "-drive without if= defaults to if=ide" behavior auto-attaches it
+    // to an IDE device too, and the drive ends up attached twice: QEMU
+    // rejects the second (virtio-blk-pci) attach with "Drive 'driveN' is
+    // already in use ... did you need 'if=none'?".
+    if (drive.virtio) parts.push("if=none");
+    parts.push(`file=${drive.file}`, `format=${drive.format ?? "raw"}`);
     if (id) parts.push(`id=${id}`);
     if (drive.media) parts.push(`media=${drive.media}`);
     if (drive.cache) parts.push(`cache=${drive.cache}`);
@@ -62,9 +70,7 @@ export function buildArgs(config: QemuConfig): string[] {
     if (drive.virtio) args.push("-device", `virtio-blk-pci,drive=${id}`);
   });
 
-  for (const net of config.net ?? []) {
-    appendNet(args, net);
-  }
+  (config.net ?? []).forEach((net, i) => appendNet(args, net, i));
 
   if (config.vnc) {
     let v = config.vnc.display;
@@ -90,13 +96,17 @@ export function buildArgs(config: QemuConfig): string[] {
   return args;
 }
 
-function appendNet(args: string[], net: QemuNet): void {
+function appendNet(args: string[], net: QemuNet, index: number): void {
   if (net.type === "none") {
     args.push("-nic", "none");
     return;
   }
 
-  const id = net.id ?? "net0";
+  // Every net entry defaulted to the literal "net0" regardless of
+  // position, unlike drives' per-index default id -- multiple net
+  // entries without an explicit id collided with "Duplicate ID 'net0'
+  // for netdev".
+  const id = net.id ?? `net${index}`;
 
   if (net.type === "tap") {
     const parts = [`tap`, `id=${id}`];
