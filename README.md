@@ -178,7 +178,7 @@ client.once("BLOCK_JOB_COMPLETED", async (e) => {
 ```ts
 await client.migrateSetCapabilities([
   { capability: "xbzrle", state: true },
-  { capability: "zero-blocks", state: true },
+  { capability: "auto-converge", state: true },
 ]);
 
 await client.migrate({ uri: "tcp:192.168.1.2:4444" });
@@ -233,6 +233,15 @@ try {
 | `MEMORY_FAILURE` | `MemoryFailureEvent` | Hardware memory failure |
 | `SUSPEND` | - | Guest suspended |
 | `WAKEUP` | - | Guest woke up |
+| `DUMP_COMPLETED` | `DumpCompletedEvent` | Guest memory dump finished |
+| `NETDEV_STREAM_CONNECTED` / `_DISCONNECTED` | `NetdevStreamEvent` | Stream-based netdev backend (dis)connected |
+| `NETDEV_VHOST_USER_CONNECTED` / `_DISCONNECTED` | `NetdevStreamEvent` | vhost-user netdev backend (dis)connected |
+| `FAILOVER_NEGOTIATED` | `FailoverNegotiatedEvent` | Failover primary device negotiation done |
+| `BLOCK_EXPORT_DELETED` | `BlockExportDeletedEvent` | A block export was torn down |
+| `BALLOON_CHANGE` | `BalloonChangeEvent` | Balloon target size changed |
+| `MEMORY_DEVICE_SIZE_CHANGE` | `MemoryDeviceSizeChangeEvent` | Memory device resized at runtime |
+| `HV_BALLOON_STATUS_REPORT` | `HvBalloonStatusReportEvent` | Hyper-V dynamic memory status report |
+| `DEVICE_UNPLUG_GUEST_ERROR` | `DeviceUnplugGuestErrorEvent` | Guest failed to unplug a requested device |
 | `connected` | - | QMP handshake complete |
 | `disconnected` | - | Socket closed |
 | `error` | `Error` | Transport error |

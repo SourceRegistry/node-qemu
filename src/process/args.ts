@@ -9,6 +9,21 @@ export function buildArgs(config: QemuConfig): string[] {
 
   if (config.enableKvm) args.push("-enable-kvm");
 
+  for (const accel of config.accel ?? []) {
+    const parts: string[] = [accel.accel];
+    if (accel.thread) parts.push(`thread=${accel.thread}`);
+    if (accel.kernelIrqchip) parts.push(`kernel-irqchip=${accel.kernelIrqchip}`);
+    if (accel.dirtyRingSize != null) parts.push(`dirty-ring-size=${accel.dirtyRingSize}`);
+    if (accel.notifyVmexit) parts.push(`notify-vmexit=${accel.notifyVmexit}`);
+    args.push("-accel", parts.join(","));
+  }
+
+  for (const obj of config.objects ?? []) {
+    const parts = [obj.type, `id=${obj.id}`];
+    for (const [key, value] of Object.entries(obj.props ?? {})) parts.push(`${key}=${value}`);
+    args.push("-object", parts.join(","));
+  }
+
   if (config.machine) {
     let m = config.machine.type;
     if (config.machine.accel) m += `,accel=${config.machine.accel}`;

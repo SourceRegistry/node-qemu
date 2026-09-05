@@ -276,9 +276,19 @@ export interface Memdev {
   policy: "default" | "preferred" | "bind" | "interleave";
 }
 
+/** @deprecated since QEMU 11.0 — use {@link AcceleratorInfo} via `query-accelerators`. */
 export interface KvmInfo {
   enabled: boolean;
   present: boolean;
+}
+
+/** Accelerator backend, e.g. `kvm`, `tcg`, `hvf`, `whpx`, `xen`. */
+export type Accelerator = "hvf" | "kvm" | "mshv" | "nvmm" | "qtest" | "tcg" | "whpx" | "xen";
+
+/** @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#query-accelerators} */
+export interface AcceleratorInfo {
+  enabled: Accelerator;
+  present: Accelerator[];
 }
 
 export interface HotpluggableCPU {
@@ -310,6 +320,11 @@ export interface VncInfo {
   family?: "ipv4" | "ipv6" | "unix" | "vsock" | "unknown";
   service?: string;
   clients?: VncClientInfo[];
+}
+
+/** One entry of `query-vnc-servers` — same shape as {@link VncInfo} plus a display `id`. */
+export interface VncServerInfo extends VncInfo {
+  id: string;
 }
 
 export interface ChardevInfo {
@@ -382,8 +397,6 @@ export type MigrationCapability =
   | "xbzrle"
   | "rdma-pin-all"
   | "auto-converge"
-  | "zero-blocks"
-  | "compress"
   | "events"
   | "postcopy-ram"
   | "x-colo"
@@ -399,11 +412,67 @@ export type MigrationCapability =
   | "background-snapshot"
   | "zero-copy-send"
   | "postcopy-preempt"
-  | "switchover-ack";
+  | "switchover-ack"
+  /** @since QEMU 8.2 */
+  | "dirty-limit"
+  /** @since QEMU 9.0 */
+  | "mapped-ram";
 
 export interface MigrationCapabilityStatus {
   capability: MigrationCapability;
   state: boolean;
+}
+
+/**
+ * Names accepted by `migrate-set-parameters` / returned by `query-migrate-parameters`.
+ * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#migrate-set-parameters}
+ */
+export type MigrationParameter =
+  | "announce-initial"
+  | "announce-max"
+  | "announce-rounds"
+  | "announce-step"
+  | "throttle-trigger-threshold"
+  | "cpu-throttle-initial"
+  | "cpu-throttle-increment"
+  | "cpu-throttle-tailslow"
+  | "tls-creds"
+  | "tls-hostname"
+  | "tls-authz"
+  | "max-bandwidth"
+  | "avail-switchover-bandwidth"
+  | "downtime-limit"
+  | "multifd-channels"
+  | "xbzrle-cache-size"
+  | "max-postcopy-bandwidth"
+  | "max-cpu-throttle"
+  | "multifd-compression"
+  | "multifd-zlib-level"
+  | "multifd-zstd-level"
+  /** @since QEMU 9.2 */
+  | "multifd-qatzip-level"
+  | "block-bitmap-mapping"
+  | "vcpu-dirty-limit"
+  /** @since QEMU 8.2/10.2 — `cpr-reboot` | `cpr-transfer` | `cpr-exec` | `normal` */
+  | "mode"
+  /** @since QEMU 9.0 */
+  | "zero-page-detection"
+  /** @since QEMU 9.1 */
+  | "direct-io"
+  /** @since QEMU 10.2 */
+  | "cpr-exec-command";
+
+export type MigrationChannelType = "main" | "multifd" | "postcopy";
+
+/** Transport address for a migration channel — shape mirrors QEMU's `SocketAddress`/`MigrationAddress` union. */
+export interface MigrationAddress {
+  transport: "socket" | "exec" | "rdma" | "file";
+  [key: string]: unknown;
+}
+
+export interface MigrationChannel {
+  "channel-type": MigrationChannelType;
+  addr: MigrationAddress;
 }
 
 // ── Command argument types ────────────────────────────────────────────────────
@@ -559,11 +628,66 @@ export interface NetdevAddOptions {
 }
 
 export interface MigrateOptions {
-  uri: string;
-  blk?: boolean;
-  inc?: boolean;
-  detach?: boolean;
+  /**
+   * Migration URI, e.g. `"tcp:host:port"` or `"unix:/path"`.
+   * Mutually exclusive with `channels` (the modern multi-channel form).
+   */
+  uri?: string;
+  /** Multi-channel transport (main/multifd/postcopy), replacing `uri` for TLS/multi-fd setups. */
+  channels?: MigrationChannel[];
   resume?: boolean;
+}
+
+export interface MigrateRecoverOptions {
+  uri: string;
+}
+
+// ── Dirty rate / dirty limit ──────────────────────────────────────────────────
+
+export type DirtyRateStatus = "unstarted" | "measuring" | "measured";
+export type DirtyRateMeasureMode = "page-sampling" | "dirty-bitmap" | "dirty-ring";
+
+export interface DirtyRateVcpu {
+  id: number;
+  "dirty-rate": number;
+}
+
+export interface DirtyRateInfo {
+  "dirty-rate"?: number;
+  status: DirtyRateStatus;
+  "start-time"?: number;
+  "calc-time": number;
+  "sample-pages"?: number;
+  mode: DirtyRateMeasureMode;
+  vcpu?: DirtyRateVcpu[];
+}
+
+export interface CalcDirtyRateOptions {
+  "calc-time": number;
+  "sample-pages"?: number;
+  mode?: DirtyRateMeasureMode;
+}
+
+export interface DirtyLimitInfo {
+  "cpu-index": number;
+  "limit-rate"?: number;
+  "current-rate"?: number;
+}
+
+export interface SetVcpuDirtyLimitOptions {
+  "cpu-index"?: number;
+  "dirty-rate": number;
+}
+
+export interface CancelVcpuDirtyLimitOptions {
+  "cpu-index"?: number;
+}
+
+export interface AnnounceSelfOptions {
+  initial?: number;
+  max?: number;
+  rounds?: number;
+  step?: number;
 }
 
 export interface SetPasswordOptions {

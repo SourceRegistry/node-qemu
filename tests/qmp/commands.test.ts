@@ -95,6 +95,91 @@ describe("QMPCommands — migration", () => {
     await c.migrateSetCapabilities([{ capability: "xbzrle", state: true }]);
     expect((c.calls[0].args as Record<string, unknown>)?.capabilities).toHaveLength(1);
   });
+
+  it("migrate accepts channels instead of uri", async () => {
+    const c = new TestClient();
+    await c.migrate({
+      channels: [{ "channel-type": "main", addr: { transport: "socket", type: "inet" } }],
+    });
+    expect(c.calls[0].command).toBe("migrate");
+    expect(c.calls[0].args).toMatchObject({
+      channels: [{ "channel-type": "main", addr: { transport: "socket", type: "inet" } }],
+    });
+  });
+
+  it("migrateRecover sends uri", async () => {
+    const c = new TestClient();
+    await c.migrateRecover({ uri: "tcp:192.168.1.2:5555" });
+    expect(c.calls[0].command).toBe("migrate-recover");
+    expect(c.calls[0].args).toEqual({ uri: "tcp:192.168.1.2:5555" });
+  });
+
+  it("announceSelf sends optional params", async () => {
+    const c = new TestClient();
+    await c.announceSelf({ rounds: 5 });
+    expect(c.calls[0].command).toBe("announce-self");
+    expect(c.calls[0].args).toEqual({ rounds: 5 });
+  });
+
+  it("calcDirtyRate sends calc-time and mode", async () => {
+    const c = new TestClient();
+    await c.calcDirtyRate({ "calc-time": 1, mode: "dirty-ring" });
+    expect(c.calls[0].command).toBe("calc-dirty-rate");
+    expect(c.calls[0].args).toEqual({ "calc-time": 1, mode: "dirty-ring" });
+  });
+
+  it("queryDirtyRate sends query-dirty-rate", async () => {
+    const c = new TestClient();
+    c.setReturn({ status: "measured", "calc-time": 1, mode: "page-sampling" });
+    await c.queryDirtyRate();
+    expect(c.calls[0].command).toBe("query-dirty-rate");
+  });
+
+  it("setVcpuDirtyLimit sends dirty-rate", async () => {
+    const c = new TestClient();
+    await c.setVcpuDirtyLimit({ "cpu-index": 0, "dirty-rate": 100 });
+    expect(c.calls[0].command).toBe("set-vcpu-dirty-limit");
+    expect(c.calls[0].args).toEqual({ "cpu-index": 0, "dirty-rate": 100 });
+  });
+
+  it("cancelVcpuDirtyLimit sends optional cpu-index", async () => {
+    const c = new TestClient();
+    await c.cancelVcpuDirtyLimit({ "cpu-index": 0 });
+    expect(c.calls[0].command).toBe("cancel-vcpu-dirty-limit");
+  });
+
+  it("queryVcpuDirtyLimit sends query-vcpu-dirty-limit", async () => {
+    const c = new TestClient();
+    c.setReturn([]);
+    await c.queryVcpuDirtyLimit();
+    expect(c.calls[0].command).toBe("query-vcpu-dirty-limit");
+  });
+});
+
+describe("QMPCommands — accelerators", () => {
+  it("queryAccelerators sends query-accelerators", async () => {
+    const c = new TestClient();
+    c.setReturn({ enabled: "kvm", present: ["kvm", "tcg"] });
+    const r = await c.queryAccelerators();
+    expect(c.calls[0].command).toBe("query-accelerators");
+    expect(r.enabled).toBe("kvm");
+  });
+
+  it("queryKvm still sends query-kvm (deprecated)", async () => {
+    const c = new TestClient();
+    c.setReturn({ enabled: true, present: true });
+    await c.queryKvm();
+    expect(c.calls[0].command).toBe("query-kvm");
+  });
+});
+
+describe("QMPCommands — VNC servers", () => {
+  it("queryVncServers sends query-vnc-servers", async () => {
+    const c = new TestClient();
+    c.setReturn([]);
+    await c.queryVncServers();
+    expect(c.calls[0].command).toBe("query-vnc-servers");
+  });
 });
 
 describe("QMPCommands — QOM", () => {

@@ -122,6 +122,39 @@ export interface MemoryFailureEvent {
   flags?: { action_required: boolean; recursive: boolean };
 }
 
+export interface NetdevStreamEvent {
+  netdev_id: string;
+  addr?: Record<string, unknown>;
+}
+
+export interface FailoverNegotiatedEvent {
+  "device-id": string;
+}
+
+export interface BlockExportDeletedEvent {
+  id: string;
+}
+
+export interface BalloonChangeEvent {
+  actual: number;
+}
+
+export interface MemoryDeviceSizeChangeEvent {
+  id?: string;
+  size: number;
+  "qom-path": string;
+}
+
+export interface HvBalloonStatusReportEvent {
+  committed: number;
+  "can-report": boolean;
+}
+
+export interface DeviceUnplugGuestErrorEvent {
+  device?: string;
+  path: string;
+}
+
 // ── Raw event ─────────────────────────────────────────────────────────────────
 
 /** Payload of the synthetic `rawEvent` meta-event, fired for every QMP event. */
@@ -174,6 +207,29 @@ export type QMPEventMap = {
   WAKEUP: Record<string, never>;
   MEMORY_FAILURE: MemoryFailureEvent;
   DUMP_COMPLETED: DumpCompletedEvent;
+  /** @since QEMU 7.2 — a stream-based netdev backend connected. */
+  NETDEV_STREAM_CONNECTED: NetdevStreamEvent;
+  /** @since QEMU 7.2 — a stream-based netdev backend disconnected. */
+  NETDEV_STREAM_DISCONNECTED: NetdevStreamEvent;
+  /** @since QEMU 10.0 — a vhost-user netdev backend connected. */
+  NETDEV_VHOST_USER_CONNECTED: NetdevStreamEvent;
+  /** @since QEMU 10.0 — a vhost-user netdev backend disconnected. */
+  NETDEV_VHOST_USER_DISCONNECTED: NetdevStreamEvent;
+  /** @since QEMU 4.2 — failover primary device negotiation completed. */
+  FAILOVER_NEGOTIATED: FailoverNegotiatedEvent;
+  /** @since QEMU 5.2 — a block export was torn down. */
+  BLOCK_EXPORT_DELETED: BlockExportDeletedEvent;
+  /** @since QEMU 1.2 — the balloon target size changed. */
+  BALLOON_CHANGE: BalloonChangeEvent;
+  /** @since QEMU 5.1 — a memory device's size changed at runtime. */
+  MEMORY_DEVICE_SIZE_CHANGE: MemoryDeviceSizeChangeEvent;
+  /** @since QEMU 8.2 — Hyper-V dynamic memory (hv-balloon) status report. */
+  HV_BALLOON_STATUS_REPORT: HvBalloonStatusReportEvent;
+  /**
+   * @since QEMU 9.1 — guest failed to unplug a device on request.
+   * Replaces the removed `MEM_UNPLUG_ERROR` event.
+   */
+  DEVICE_UNPLUG_GUEST_ERROR: DeviceUnplugGuestErrorEvent;
   /** Fired for every QMP event with the full raw payload including timestamp. */
   rawEvent: RawQmpEvent;
   connected: void;

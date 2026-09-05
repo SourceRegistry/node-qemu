@@ -38,7 +38,17 @@ import type {
   DeviceAddOptions,
   NetdevAddOptions,
   MigrateOptions,
+  MigrateRecoverOptions,
   MigrationCapability,
+  MigrationParameter,
+  AcceleratorInfo,
+  DirtyRateInfo,
+  CalcDirtyRateOptions,
+  DirtyLimitInfo,
+  SetVcpuDirtyLimitOptions,
+  CancelVcpuDirtyLimitOptions,
+  AnnounceSelfOptions,
+  VncServerInfo,
   SetPasswordOptions,
   ExpirePasswordOptions,
   ScreendumpOptions,
@@ -232,6 +242,9 @@ export abstract class QMPCommands extends EventEmitter<QMPEventEmitterMap> {
   /**
    * Pause an active block job.
    *
+   * @deprecated since QEMU 10.1 — use {@link jobPause} with the job ID instead.
+   * The only behavioral difference is the error class returned for an unknown
+   * ID (`DeviceNotActive` here vs `GenericError` from `job-pause`).
    * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#block-job-pause}
    */
   blockJobPause(device: string): Promise<void> {
@@ -241,6 +254,7 @@ export abstract class QMPCommands extends EventEmitter<QMPEventEmitterMap> {
   /**
    * Resume a previously paused block job.
    *
+   * @deprecated since QEMU 10.1 — use {@link jobResume} with the job ID instead.
    * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#block-job-resume}
    */
   blockJobResume(device: string): Promise<void> {
@@ -263,6 +277,7 @@ export abstract class QMPCommands extends EventEmitter<QMPEventEmitterMap> {
   /**
    * Complete (finalize) a ready block job, e.g. pivot a mirror.
    *
+   * @deprecated since QEMU 10.1 — use {@link jobComplete} with the job ID instead.
    * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#block-job-complete}
    */
   blockJobComplete(device: string): Promise<void> {
@@ -509,7 +524,11 @@ export abstract class QMPCommands extends EventEmitter<QMPEventEmitterMap> {
   // ── Migration ───────────────────────────────────────────────────────────────
 
   /**
-   * Start a live migration to the given URI.
+   * Start a live migration to the given URI, or over one or more explicit
+   * `channels` (the modern form, required for TLS or multiple multifd sockets).
+   * `blk`/`inc`/`detach` (fd-passing) were removed from `migrate` in QEMU 9.1/11.0 —
+   * use `blockdevMirror` + NBD for storage migration, and `file:` URIs with
+   * `add-fd`/fdsets instead of `fd:`.
    *
    * @example
    * ```ts
@@ -578,11 +597,11 @@ export abstract class QMPCommands extends EventEmitter<QMPEventEmitterMap> {
   }
 
   /**
-   * Tune migration parameters (bandwidth, downtime, etc.).
+   * Tune migration parameters (bandwidth, downtime, multifd, etc.).
    *
    * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#migrate-set-parameters}
    */
-  migrateSetParameters(params: Record<string, unknown>): Promise<void> {
+  migrateSetParameters(params: Partial<Record<MigrationParameter, unknown>>): Promise<void> {
     return this.execute("migrate-set-parameters", params).then(() => undefined);
   }
 
@@ -609,8 +628,86 @@ export abstract class QMPCommands extends EventEmitter<QMPEventEmitterMap> {
    *
    * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#query-migrate-parameters}
    */
-  queryMigrateParameters(): Promise<Record<MigrationCapability, unknown>> {
+  queryMigrateParameters(): Promise<Partial<Record<MigrationParameter, unknown>>> {
     return this.execute("query-migrate-parameters");
+  }
+
+  /**
+   * Resume a postcopy migration that paused after a network failure, by
+   * supplying a new URI for the source to reconnect on.
+   *
+   * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#migrate-recover}
+   */
+  migrateRecover(opts: MigrateRecoverOptions): Promise<void> {
+    return this.execute("migrate-recover", opts as unknown as Record<string, unknown>).then(
+      () => undefined,
+    );
+  }
+
+  /**
+   * Trigger the guest's NICs to send self-announce packets, e.g. after a
+   * migration or failover to update switch MAC tables.
+   *
+   * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#announce-self}
+   */
+  announceSelf(opts?: AnnounceSelfOptions): Promise<void> {
+    return this.execute("announce-self", opts as unknown as Record<string, unknown>).then(
+      () => undefined,
+    );
+  }
+
+  /**
+   * Measure the VM's memory dirty-page rate over a sampling window — useful
+   * to decide whether a live migration is likely to converge.
+   *
+   * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#calc-dirty-rate}
+   */
+  calcDirtyRate(opts: CalcDirtyRateOptions): Promise<void> {
+    return this.execute("calc-dirty-rate", opts as unknown as Record<string, unknown>).then(
+      () => undefined,
+    );
+  }
+
+  /**
+   * Return the result of the most recent {@link calcDirtyRate} measurement.
+   *
+   * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#query-dirty-rate}
+   */
+  queryDirtyRate(): Promise<DirtyRateInfo> {
+    return this.execute("query-dirty-rate");
+  }
+
+  /**
+   * Set (or clear, per-vCPU or globally) a dirty-page rate limit used to
+   * throttle a vCPU during migration convergence.
+   *
+   * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#set-vcpu-dirty-limit}
+   */
+  setVcpuDirtyLimit(opts: SetVcpuDirtyLimitOptions): Promise<void> {
+    return this.execute("set-vcpu-dirty-limit", opts as unknown as Record<string, unknown>).then(
+      () => undefined,
+    );
+  }
+
+  /**
+   * Cancel a previously set vCPU dirty-page rate limit.
+   *
+   * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#cancel-vcpu-dirty-limit}
+   */
+  cancelVcpuDirtyLimit(opts?: CancelVcpuDirtyLimitOptions): Promise<void> {
+    return this.execute(
+      "cancel-vcpu-dirty-limit",
+      opts as unknown as Record<string, unknown>,
+    ).then(() => undefined);
+  }
+
+  /**
+   * Return the currently configured dirty-page rate limit(s) per vCPU.
+   *
+   * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#query-vcpu-dirty-limit}
+   */
+  queryVcpuDirtyLimit(): Promise<DirtyLimitInfo[]> {
+    return this.execute("query-vcpu-dirty-limit");
   }
 
   // ── CPU / memory ────────────────────────────────────────────────────────────
@@ -645,10 +742,21 @@ export abstract class QMPCommands extends EventEmitter<QMPEventEmitterMap> {
   /**
    * Return KVM acceleration availability and enablement status.
    *
+   * @deprecated since QEMU 11.0 — use {@link queryAccelerators} instead, which
+   * covers all accelerator backends (KVM, TCG, HVF, WHPX, ...), not just KVM.
    * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#query-kvm}
    */
   queryKvm(): Promise<KvmInfo> {
     return this.execute("query-kvm");
+  }
+
+  /**
+   * Return the enabled accelerator and all accelerators present in this build.
+   *
+   * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#query-accelerators}
+   */
+  queryAccelerators(): Promise<AcceleratorInfo> {
+    return this.execute("query-accelerators");
   }
 
   // ── Display / console ───────────────────────────────────────────────────────
@@ -660,6 +768,15 @@ export abstract class QMPCommands extends EventEmitter<QMPEventEmitterMap> {
    */
   queryVnc(): Promise<VncInfo> {
     return this.execute("query-vnc");
+  }
+
+  /**
+   * Return information about every VNC server (multi-display / `-display vnc` setups).
+   *
+   * @see {@link https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html#query-vnc-servers}
+   */
+  queryVncServers(): Promise<VncServerInfo[]> {
+    return this.execute("query-vnc-servers");
   }
 
   /**

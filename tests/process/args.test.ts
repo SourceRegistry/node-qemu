@@ -200,6 +200,29 @@ describe("buildArgs", () => {
     expect(args[args.indexOf("-monitor") + 1]).toBe("none");
   });
 
+  it("adds -accel for each entry with tuning options", () => {
+    const args = buildArgs({
+      accel: [
+        { accel: "kvm", thread: "multi", dirtyRingSize: 4096, notifyVmexit: "run" },
+        { accel: "tcg" },
+      ],
+    });
+    const accels = args.filter((a) => a === "-accel");
+    expect(accels).toHaveLength(2);
+    expect(args[args.indexOf("-accel") + 1]).toBe(
+      "kvm,thread=multi,dirty-ring-size=4096,notify-vmexit=run",
+    );
+    expect(args[args.lastIndexOf("-accel") + 1]).toBe("tcg");
+  });
+
+  it("adds -object for each configured QOM object with props", () => {
+    const args = buildArgs({
+      objects: [{ type: "sev-guest", id: "sev0", props: { "cbitpos": 51, "reduced-phys-bits": 1 } }],
+    });
+    const idx = args.indexOf("-object");
+    expect(args[idx + 1]).toBe("sev-guest,id=sev0,cbitpos=51,reduced-phys-bits=1");
+  });
+
   it("appends extraArgs verbatim", () => {
     const args = buildArgs({ extraArgs: ["-nographic", "-S"] });
     expect(args).toContain("-nographic");

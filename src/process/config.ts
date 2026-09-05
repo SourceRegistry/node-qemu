@@ -107,6 +107,33 @@ export interface QemuSpice {
   disableTicketing?: boolean;
 }
 
+/**
+ * `-accel` configuration — the modern, more flexible alternative to
+ * `enableKvm`/`machine.accel` when you need per-accelerator tuning
+ * (thread mode, dirty ring size, vmexit notification). Multiple entries
+ * are tried in order as fallbacks, mirroring `-accel a -accel b`.
+ */
+export interface QemuAccelOptions {
+  accel: QemuAccel;
+  thread?: "single" | "multi";
+  kernelIrqchip?: "on" | "off" | "split";
+  /** KVM dirty ring size in entries (must be a power of 2), e.g. `4096`. */
+  dirtyRingSize?: number;
+  notifyVmexit?: "run" | "internal-error" | "disable";
+}
+
+/**
+ * Runtime QOM object created at startup via `-object`, e.g. a memory
+ * backend, iothread, secret, or confidential-guest-support backend
+ * (`sev-guest`, `tdx-guest`) for encrypted-VM support.
+ */
+export interface QemuObjectOptions {
+  /** QOM type name, e.g. `"sev-guest"`, `"memory-backend-ram"`, `"iothread"`. */
+  type: string;
+  id: string;
+  props?: Record<string, string | number | boolean>;
+}
+
 export interface QemuConfig {
   machine?: QemuMachine;
   cpu?: string;
@@ -125,6 +152,10 @@ export interface QemuConfig {
   noShutdown?: boolean;
   /** Shorthand to add -enable-kvm. */
   enableKvm?: boolean;
+  /** One or more `-accel` backends, tried in order. Prefer this over `enableKvm`/`machine.accel` for per-accelerator tuning. */
+  accel?: QemuAccelOptions[];
+  /** Runtime QOM objects created via `-object`, e.g. confidential-guest-support for SEV/TDX. */
+  objects?: QemuObjectOptions[];
   extraArgs?: string[];
 }
 
